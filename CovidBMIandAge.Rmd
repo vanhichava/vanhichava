@@ -1,0 +1,387 @@
+---
+title: "CovidBMIandAge"
+output: html_document
+date: "2025-07-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+```
+
+
+
+
+# Case Study #1: Potential Relationship Between Age and BMI Among All Patients
+
+## Introduction
+Between the years of 2022 and 2024, Denmark was hit with the intense impact of the Coronavirus diseases (COVID-19). Data was cataloged by the national government, focusing on initial infection, reinfection, vaccination, key demographics (age, region, gender), and infection strand type. This dataset is for educational purposes, used for epidemiological modeling.
+
+This study analyzes the impact of Sars COVID-19 on the world and the potential relationship between factors of a patient that could have impacted their COVID-19 status. All patients recorded in the dataset had their age taken down (in integer years) and Body Mass Index or BMI (decimal number value). This report focuses on the potential connection of the age of a patient and BMI of a patient, distinguishing by specific variables connecting to the patient's COVID-19 infection.
+
+Research Question #1: is there a linear relationship between the age and BMI of a patient?
+
+Link: https://www.kaggle.com/datasets/khushikyad001/covid-19-reinfection-and-health-dataset
+
+From the original dataset, we extracted the "Patient_ID", "Age" and the "BMI" columns.
+
+## Data Importing + Tidying
+
+```{r}
+covid <- read.csv("C:/Users/VanhiChava/Downloads/covid.csv")
+head(covid)
+```
+
+
+```{r, results = "hide"}
+ABMI_covid <- covid %>%
+  select(Patient_ID, Age, BMI)
+ABMI_covid
+```
+
+We will create a linear model that holds the representation of a linear relationship between the age of a patient and the BMI of a patient. The goal is to explore how a patient's age can predict their BMI.
+```{r}
+ABMI_mod <- lm(BMI ~ Age, data = ABMI_covid)
+summary(ABMI_mod)
+```
+
+## Graphical Representation and Assumptions
+
+First, we will test the correlation between the two variables to quantify the strength and direction of the linear relationship.
+```{r}
+x <- ABMI_covid$Age
+y <- ABMI_covid$BMI
+cor(x,y)
+```
+Due to the correlation being extremely low, the strength and direction of the relationship between the age of a patient and their BMI is weak but negative. The extreme weakness of the correlation will likely result in the inability to complete a linear test, since this relationship is likely not linear.
+
+We created a scatterplot below to depict the linear correlation compared to the raw data.
+
+```{r}
+ggplot(ABMI_covid, aes(x = Age, y = BMI)) + 
+  geom_point()
+```
+
+The plot has no sign of a linear relationship, especially due to the concentration of values between a BMI of 20 to 33 across all ages.
+
+To validate the starting theory that there is no linear relationship between the age and BMI of a patient, we will check the linearity, normality, and constant variance assumption based on the residual plot.
+
+```{r, results = "hide"}
+test_linear <- ABMI_covid %>%
+  mutate(residuals = resid(ABMI_mod),
+         predicted = fitted(ABMI_mod)) %>%
+  select(Age, BMI, residuals, predicted)
+test_linear
+```
+
+```{r}
+ggplot(test_linear, aes(x = predicted, y = residuals)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0)
+```
+
+Based on the residual plot above, none of the assumptions required for preforming a linear test on the relationship between a patient's age and BMI were violated. Linearity is not violated as the data points are randomly scattered on the plot with no signs of a systemic positive or negative residual depending on the predicted value. Normality is also not violated due to the points being relatively symmetric across the line of y = 0. Finally, the constant variance (not heteroskedastic data) assumption is not violated as there is no pattern of the spread of the residuals increasing or decreasing based on the predicted value.
+
+Although the assumptions are met, this does not indicate a linear relationship. The correlation between the patient's age and BMI indicated otherwise as stated above, with a very weak linear relationship. Additionally, the sample size is much too high to clearly validate the assumptions, adding more reasonable doubt to the claim of a linear relationship. The next step in this study will be to conduct a statistical test measuring the slope of the proposed linear relationship.
+
+```{r}
+nrow(ABMI_covid)
+```
+
+## Statistical Analysis
+
+We will be conducting a hypothesis test to measure the true slope of the linear relationship between a patient's age and BMI. 
+
+All assumptions (linearity, normality, constant variance) have been met. 
+
+B1-hat represents the prediction from the linear model for the slope of the linear relationship. We will be using a T distribution as a relation to the sampling distribution of B1-hat. 
+
+B1 is represents the true slope of the linear relationship between a patient's age and BMI. 
+
+The hypotheses are below:
+H0: B1_hat = 0 and Ha: B1_hat is not equal to 0.
+
+This hypothesis test will be performed at the significance level of alpha = 0.05.
+
+
+Performing the Hypothesis Test:
+
+```{r}
+summary(ABMI_mod)
+```
+
+```{r}
+#Defining All Necessary Variables
+B1_hat <- -0.004620
+B_null <- 0
+estimation_error <- 0.004285
+n <- nrow(ABMI_covid)
+
+#Test Statistic Calculation
+t_obs <- (B1_hat - B_null) / estimation_error
+
+#P-Value Calculation
+2*pt(t_obs, df = n - 2)
+```
+
+Since the p-value is greater than the significance level alpha = 0.05, we fail to reject the null hypothesis. We do not have significant evidence that the true slope of a linear relationship between the age and BMI of a patient is not equal to 0. As a result, we do not have significant evidence of a linear relationship between the age and BMI of a patient.
+
+In the future, it could prove valuable to explore the linear relationship of the age of a patient and various other variables, such as the probability of a patient getting infected with COVID-19. Explore such relationships between variables could lead to further understanding of the variance in spread of COVID-19 across different age groups and which age groups were most at risk.
+
+
+
+# Case Study #2: Potential Relationship Between Age and BMI Based on Hospitalization Status
+
+This report is extremely similar to the first study; however, instead of looking at all patients, we will distinguish between hospitalized and non-hospitalized patients. This distinction comes in the "Hospitalized" column of the original dataset, where each patient is recorded as "Yes" or "No" for whether or not they were hospitalized when infected with COVID-19.
+
+We will complete the analyses for both hospitalized and non-hospitalized patients simultaneously to exemplify direct comparison. The analyses will be complete using the same statistical processes as Case Study #1.
+
+Research Question #2a: Is there a difference in linear relationship between the age and BMI of a patient based on the distinction of hospitalization status?
+
+## Data Tidying 
+```{r}
+yesh_covid <- covid %>%
+  filter(Hospitalized == "Yes") %>%
+  select(Patient_ID, Age, BMI)
+
+noh_covid <- covid %>%
+  filter(Hospitalized == "No") %>%
+  select(Patient_ID, Age, BMI)
+```
+
+Linear Model Creation:
+
+```{r}
+yesh_mod <- lm(BMI ~ Age, data = yesh_covid)
+
+noh_mod <- lm(BMI ~ Age, data = noh_covid)
+```
+
+## Graphical Representation 
+
+We will first look at the correlations between the age and BMI for both hospitalized and non-hospitalized patients.
+```{r}
+cor(yesh_covid$Age, yesh_covid$BMI)
+
+cor(noh_covid$Age, noh_covid$BMI)
+```
+Both correlations are extremely low, exemplifying little to no linear relationship between the age and BMI of hospitalized and non-hospitalized patients. There is a difference in correlation of approximately 0.001 which, as of now, does not seem significant. Additionally, both correlations are negative signifying an inverse relationship between the variable for both hospitalized and non-hospitalized patients.
+
+Next, we will create a scatterplot of the individual and combined raw datasets to depict a direct comparison between the age and BMI of hospitalized and non-hospitalized patients.
+
+```{r}
+ggplot(yesh_covid, aes(x = Age, y = BMI)) + 
+  geom_point(color = "dodgerblue") + 
+  labs(title = "Age vs. BMI Among Hospitalized Patients")
+
+ggplot(noh_covid, aes(x = Age, y = BMI)) + 
+  geom_point(color = "red") + 
+  labs(title = "Age vs. BMI Among Non-Hospitalized Patients")
+
+ggplot(covid, aes(x = Age, y = BMI, color = Hospitalized)) + 
+  geom_point() + 
+  labs(title = "Age vs. BMI Among All Patients",
+       subtitle = "Distinguished by Hospitalized Status at the Time of COVID-19 Infection")
+```
+
+There is not a clear distinction for the relationship of the age and BMI of a patient between hospitalized and non-hospitalized patients. However, this relationship seems to have more variance (more spread out) among hospitalized patients compared to non-hospitalized patients. Based on all plots, there does not seem to be any sign of linear relationship.
+
+To validate the starting theory that there is no linear relationship between the age and BMI of a patient, we will check the linearity, normality, and constant variance assumption based on the residual plot of both hospitalized and non-hospitalized patients.
+
+```{r}
+linear_yes <- yesh_covid %>%
+  mutate(residualsy = resid(yesh_mod),
+         predictedy = fitted(yesh_mod))
+linear_no <- noh_covid %>% 
+  mutate(residualsn = resid(noh_mod),
+         predictedn = fitted(noh_mod))
+
+ggplot(linear_yes, aes(x = predictedy, y = residualsy)) + 
+  geom_point(color = "dodgerblue") + 
+  geom_hline(yintercept = 0) + 
+  labs(title = "Residual Plot for Hospitalized Patients")
+
+ggplot(linear_no, aes(x = predictedn, y = residualsn)) + 
+  geom_point(color = "red") + 
+  geom_hline(yintercept = 0) + 
+  labs(title = "Residual Plot for Non-Hospitalized Patients")
+```
+
+
+Starting with the residual plot for hospitalized patients, the assumptions for linearity are not violated. Linearity is not violated as the points are relatively scattered among the plot with no obvious detectable pattern of the residuals based on the sign of the predicted values. Normality is not violated as the points are symmetric across the y = 0 line. Finally, constant variance is not violated as there is no detectable pattern of spread of the residuals based on the predicted values.
+
+Next, the residual plot for non-hospitalized patients has also not violated the assumptions for linearity. 
+Linearity is not violated as the points are relatively scattered among the plot with no obvious detectable pattern of the residuals based on the sign of the predicted values. Normality is not violated as the points are symmetric across the y = 0 line, although some residuals are packed along the line. Finally, constant variance is not violated as there is no detectable pattern of spread of the residuals based on the predicted values.
+
+It is important to note that the sample size for both hospitalized and non-hospitalized patients is incredibly high. This can, in some situations, impact the clarity of determining the linearity assumptions due to the massive number of points. Although the assumptions are met, the previous correlation of the relationship between a patient's age and BMI was extremely low and the sample impacts the potential validity of a linear relationship for both hospitalized and non-hospitalized patients. The next step will be to conduct a statistical test measuring the slope of the potential linear relationship for both hospitalized and non-hospitalized patients AND test the difference between both.
+
+```{r}
+nrow(yesh_covid); nrow(noh_covid)
+```
+
+
+## Statistical Analysis
+
+For the purpose of finding and distinguishing the linear relationships of the age and BMI of patients based on hospitalization status, we will be conducting three separate statistical tests:
+
+Test #1 will be a hypothesis test focusing on hospitalized patients to determine the slope of the linear relationship of the age and BMI of a patient. This test will determine if a linear relationship is at all feasible.
+
+Test #2 will have the exact same process as Test #1, except focusing on non-hospitalized patients.
+
+Test #3 will be finding a confidence interval to see if there is a difference in slope of the linear relationship of the age and BMI of a patient between hospitalized and non-hospitalized patients. The result of this test will be the final answer to the research question.
+
+
+#### Test #1: Is there a linear relationship between the age and BMI of hospitalized patients?
+
+We will be conducting a hypothesis test to measure the true slope of the linear relationship between a patient's age and BMI for hospitalized patients.
+
+All assumptions (linearity, normality, constant variance) have been met. 
+
+B1-hat represents the prediction from the linear model for the slope of the linear relationship. We will be using a T distribution as a relation to the sampling distribution of B1-hat. 
+
+B1 is represents the true slope of the linear relationship between a patient's age and BMI for hospitalized patients.
+
+The hypotheses are below:
+H0: B1_hat = 0 and Ha: B1_hat is not equal to 0.
+
+This hypothesis test will be performed at the significance level of alpha = 0.05.
+
+```{r}
+summary(yesh_mod)
+```
+
+```{r}
+#From the Summary - Variable Definitions
+B1haty <- -0.003094
+sehaty <- 0.007975
+Bnully <- 0
+ny <- nrow(yesh_covid)
+
+#Calculating the Observed T Value
+tvaly <- (B1haty - Bnully) / sehaty
+
+#Calculating the P-Value using a T Distribution
+2*pt(tvaly, df = ny - 2)
+```
+Conclusion: Since the p-value is larger than the significance level (alpha = 0.05), we fail to reject the null. We do not have significant evidence that the true slope of the linear relationship of the age and BMI of a patient is not equal to 0. This results in the final conclusion that we do not have significant evidence of a linear relationship between the age and BMI of hospitalized patients.
+
+
+#### Test #2: Is there a linear relationship between the age and BMI of non-hospitalized patients?
+
+We will be conducting a hypothesis test to measure the true slope of the linear relationship between a patient's age and BMI for non-hospitalized patients.
+
+All assumptions (linearity, normality, constant variance) have been met. 
+
+B1-hat represents the prediction from the linear model for the slope of the linear relationship. We will be using a T distribution as a relation to the sampling distribution of B1-hat. 
+
+B1 is represents the true slope of the linear relationship between a patient's age and BMI for non-hospitalized patients.
+
+The hypotheses are below:
+H0: B1_hat = 0 and Ha: B1_hat is not equal to 0.
+
+This hypothesis test will be performed at the significance level of alpha = 0.05.
+
+```{r}
+summary(noh_mod)
+```
+
+```{r}
+#From the Summary - Variable Definitions
+B1hatn <- -0.005314
+sehatn <- 0.005083
+Bnulln <- 0
+n_n <- nrow(noh_covid)
+
+#Calculating the Observed T Value
+tvaln <- (B1hatn - Bnulln) / sehatn
+
+#Calculating the P-Value using a T Distribution
+2*pt(tvaln, df = n_n - 2)
+```
+Conclusion: Since the p-value is larger than the significance level (alpha = 0.05), we fail to reject the null. We do not have significant evidence that the true slope of the linear relationship of the age and BMI of a patient is not equal to 0. This results in the final conclusion that we do not have significant evidence of a linear relationship between the age and BMI of non-hospitalized patients.
+
+#### Test #3: Is there a difference in the true slope of the linear relationship of age and BMI between hospitalized and non-hospitalized patients?
+
+We will be creating a confidence interval to measure the difference of true slopes. To do this, we will create one confidence interval per sample, between hospitalized and non-hospitalized patients. 
+
+All assumptions (linearity, normality, constant variance) have been met. 
+
+The intervals are aimed for precision in order to differentiate between the true slope of the linear relationship between hospitalized and non-hospitalized patients, so we will be using a lower confidence level. The confidence level will be 90% for both confidence intervals.
+
+B1 represents the true slope of the linear relationship between a patient's age and BMI for hospitalized patients.
+
+B1-hat represents the prediction from the linear model for the slope of the linear relationship. We will be using a T distribution as a relation to the sampling distribution of B1-hat. 
+
+Starting with hospitalized patients, we will take the same variable values for B1_hat and the estimation error of B1_hat as set when completing the hypothesis test, since these values are taken from the summary of the linear model. We will also take the number of patients that are classified as hospitalized using the "nrow" function of our queried dataset.
+
+```{r}
+#From the Summary - Variable Definitions (From Previous Hypothesis Test)
+B1haty <- -0.003094
+sehaty <- 0.007975
+ny <- nrow(yesh_covid)
+
+#Defining the Point Estimate and Standard Error
+point_estimatey = B1haty
+std_errory = sehaty
+
+#Calculating the T Value
+# 1 - 0.90 = 0.10 / 2 = 0.05 -> 0.95
+t_valuey <- qt(0.95, df = ny-2)
+
+#Calculating the Confidence Interval
+c(point_estimatey - t_valuey*std_errory, point_estimatey + t_valuey*std_errory)
+```
+We are 90% confident that the true slope of the linear relationship between a patient's age and BMI for hospitalized patients lies within the interval (-0.01, 0.01).
+
+
+We will now create the second confidence interval for non-hospitalized patients.
+
+B1 now represents the true slope of the linear relationship between a patient's age and BMI for non-hospitalized patients.
+
+B1-hat represents the prediction from the linear model for the slope of the linear relationship. We will be using a T distribution as a relation to the sampling distribution of B1-hat. 
+
+With non-hospitalized patients, we will take the same variable values for B1_hat and the estimation error of B1_hat as set when completing the hypothesis test, since these values are taken from the summary of the linear model. We will also take the number of patients that are classified as hospitalized using the "nrow" function of our queried dataset.
+
+```{r}
+#From the Summary - Variable Definitions (From Previous Hypothesis Test)
+B1hatn <- -0.005314
+sehatn <- 0.005083
+n_n <- nrow(noh_covid)
+
+#Defining the Point Estimate and Standard Error
+point_estimaten = B1hatn
+std_errorn = sehatn
+
+#Calculating the T Value
+# 1 - 0.90 = 0.10 / 2 = 0.05 -> 0.95
+t_valuen <- qt(0.95, df = n_n-2)
+
+#Calculating the Confidence Interval
+c(point_estimaten - t_valuen*std_errorn, point_estimaten + t_valuen*std_errorn)
+```
+We are 90% confident that the true slope of the linear relationship between a patient's age and BMI for hospitalized patients lies within the interval (-0.01, 0.003).
+
+One final measurement to take for is to see the difference in point estimates and sample size between the two samples:
+```{r}
+point_estimatey; point_estimaten
+```
+```{r}
+ny; n_n
+```
+Conclusion:
+
+Both confidence intervals are relatively close in terms of start and end points. 
+
+It is important to note that both intervals include 0, meaning that for both hospitalized and non-hospitalized patients we cannot assume that there is a linear relationship between the age and BMI of a patient.
+
+Additionally, while there is a difference in size of both confidence intervals, the interval for non-hospitalized patients is smaller and more constrained. This is likely due to the much larger sample size of non-hospitalized patients compared to hospitalized patients, meaning that there is more patient data for the non-hospitalized sample for a more precise estimate confidence interval.
+
+However, one helpful conclusion that can be made is from the point estimates the overlap of confidence intervals. The point estimates are very similar, only differing by approximately 0.002 and the confidence intervals between hospitalized and non-hospitalized patients do overlap with one another, especially having very similar minimums. Within the overlap, both confidence intervals also cover 0, meaning that a linear relationship cannot be an assumption for both hospitalized and non-hospitalized patients. 
+
+Due to these consistencies between both sample, it is reasonable to think that there is a potentially similar relationship of the age and BMI of a patient between hospitalized and non-hospitalized patients. While we cannot say for certain that the relationships are the same until creating a direct comparison of the relationships together, at this time, we do not have significant evidence of a difference of the age and BMI between hospitalized and non-hospitalized patients.
+
