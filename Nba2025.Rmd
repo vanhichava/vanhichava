@@ -1,0 +1,142 @@
+---
+title: "Nba2025"
+output: html_document
+date: "2025-06-26"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+```
+
+# Initial Data Import and Manipulation
+
+```{r}
+nba <- read.csv("C:/Users/VanhiChava/Downloads/nba2025.csv")
+head(nba)
+```
+
+
+# Question Exploration
+
+## What are the top 3 teams that had the highest mean PPG average amongst all untraded players?
+```{r}
+PPG_nba <- nba %>% 
+  filter(CUR == "Yes") %>%
+  group_by(TEAM) %>%
+  summarize(sumPPG = sum(PpG),
+            total_players = n(),
+            meanPPG = sumPPG/total_players)
+ggplot(PPG_nba, aes(x = meanPPG, y = TEAM, fill = TEAM)) + 
+    geom_col() + 
+    labs(title = "NBA Teams' Mean PPG per Player")
+```
+```{r}
+PPG_nba %>%
+  arrange(meanPPG) %>%
+  slice_max(meanPPG, n = 3)
+```
+
+> The teams with the highest mean PPG among untraded players are: New Orleans Pelicans, Atlanta Hawks, and the Dallas Mavericks. 
+
+## What are the top 5 oldest and youngest NBA teams prior to the start of the 2025 NBA season?
+
+```{r}
+age_nba <- nba %>%
+  group_by(TEAM) %>%
+  summarize(meanAge = sum(AGE) / n())
+
+ggplot(age_nba, aes(x = meanAge, y = TEAM, color = TEAM)) + 
+  geom_point(size = 3.0, shape = 10) + 
+  theme_classic()
+```
+
+```{r}
+age_nba %>%
+  arrange(meanAge) %>%
+  slice_max(meanAge, n = 5)
+```
+
+
+> The top 5 oldest teams in the NBA are the Phoenix Suns, the Los Angeles Clippers, the Golden State Warriors, the Miami Heat, and the Boston Celtics.
+
+
+```{r}
+age_nba %>%
+  arrange(meanAge) %>%
+  slice_min(meanAge, n = 5)
+```
+
+> The top 5 youngest teams in the NBA are the Portland Trail Blazers, the Brooklyn Nets, the Oklahoma City Thunder, the Utah Jazz, and the Memphis Grizzlies.
+
+NEXT TIMES: create density plots of ages for the oldest and youngest teams. 
+
+
+## What does the age distribution of players for the NBA teams with the youngest and oldest overall mean age?
+
+Youngest NBA Team: 
+
+```{r}
+young_nba <- age_nba %>%
+  arrange(meanAge) %>%
+  slice_min(meanAge, n = 1) 
+young_team <- young_nba$TEAM[1]
+
+nba %>%
+  filter(TEAM == young_team) %>%
+  select(NAME, AGE) %>%
+  ggplot(aes(x = AGE)) + 
+    geom_density(fill = "dodgerblue", alpha = 0.5) + 
+    labs(title = "Age Distribution Plot of Youngest NBA Team")
+  
+```
+Oldest NBA Team: 
+
+```{r}
+old_nba <- age_nba %>%
+  arrange(meanAge) %>%
+  slice_max(meanAge, n = 1) 
+old_team <- old_nba$TEAM[1]
+
+nba %>%
+  filter(TEAM == old_team) %>%
+  select(NAME, AGE) %>%
+  ggplot(aes(x = AGE)) + 
+    geom_density(fill = "red", alpha = 0.5) + 
+    labs(title = "Age Distribution Plot of Oldest NBA Team")
+  
+```
+In order to have a more direct comparison, we will overlap the plots.
+```{r}
+nba %>%
+  filter(TEAM == old_team | TEAM == young_team) %>%
+  ggplot(aes(x = AGE, fill = TEAM, alpha = 0.2)) + 
+    geom_density()
+  
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
