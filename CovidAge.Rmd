@@ -1,0 +1,125 @@
+---
+title: "Practice"
+output: html_document
+date: "2025-06-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+```
+
+# Case Study #1: Differences in Severity of Case based on Hospitalized Patients by Age
+
+## Introduction and Data Background
+
+Between the years of 2022 and 2024, Denmark was hit with the intense impact of the Coronavirus diseases (COVID-19). Data was cataloged by the national government, focusing on initial infection, reinfection, vaccination, key demographics (age, region, gender), and infection strand type. This dataset is for educational purposes, used for epidemiological modeling.
+
+In this dataset, a single row represents an individual patient. Feature variables used in the study include Hospitalization Status (binary: Yes or No), Age (number of years), and Severity of COVID-19 Case (Critical, High, Low, Severe). Patient names are completely anonymous and pre-existing medical conditions are not considered for the purpose of isolating COVID case severity. 
+
+Link: https://www.kaggle.com/datasets/khushikyad001/covid-19-reinfection-and-health-dataset
+
+Based on the data provided, the impact of COVID-19 was devastating. Most importantly, identifying how this impact varies over different age groups is crucial to preparing immediate care to those who need it most. In order to identify this impact, we focused on distinguishing age groups using the severity of a case, either Critical (in life-threatening conditions) or High (extreme impact). The research question is: is there a difference between the true average age of hospitalized COVID patients triaged as a critical vs. high case?
+
+## Importing and Tidying the Data
+
+```{r}
+covid <- read.csv("C:/Users/VanhiChava/Downloads/covid.csv")
+head(covid)
+```
+
+
+```{r}
+age_covid <- covid %>% 
+  filter(Hospitalized == "Yes") %>%
+  group_by(Severity) %>%
+  summarize(mean_Age = mean(Age),
+            total = n(),
+            sd_Age = sd(Age))
+age_covid
+```
+## Graphical Representation
+
+#### Scatter Plot Comparison of All Hospitalized Patients
+The purpose of this plot is to showcase the similarity in age of patients no matter the COVID-19 case severity. There are no specific patterns to identify in the plot to distinguish that age has a true impact on the classification of severity. That being said, preforming a confidence test will provide more information on finding this distinction.
+
+```{r}
+hosp_covid <- covid %>%
+  filter(Hospitalized == "Yes")
+
+ggplot(hosp_covid, aes(x = Patient_ID, y = Age)) +
+  geom_point(aes(color = Severity)) + 
+  labs(x = "Patient Identification Number",
+       y = "Age of Patients",
+       title = "Severity of COVID Case vs. Age per Patient",
+       subtitle = "Hospitalized COVID Patients Only")
+```
+
+#### Bar Plot Comparison
+
+```{r}
+ggplot(age_covid, aes(x = Severity, y = mean_Age, fill = Severity)) + geom_col() +
+labs(x = "Severity of COVID Case",
+       y = "Mean Age of Patients",
+       title = "Severity of COVID Symptoms vs. Mean Age",
+      subtitle = "Hospitalized COVID Patients Only")
+```
+
+
+## Statistical Analysis
+
+This statistical study will be preformed using a 98% confidence interval for optimal identification of a distinction between the true mean age of hospitalized COVID patients classified as critical subtracted by high severity (Critical - High).
+
+Variable Definitions
+```{r}
+#Critical Patient Statistics
+xbarc <- age_covid$mean_Age[1]
+sdc <- age_covid$sd_Age[1]
+nc <- age_covid$total[1]
+
+#High Severity Patient Statistics
+xbarh <- age_covid$mean_Age[2]
+sdh <- age_covid$sd_Age[2]
+nh <- age_covid$total[2]
+
+nc;nh
+```
+
+The assumption that patients classified as having a critical case versus a high severity case is made. Both sample sizes are large enough to induce the Central Limit Theorem so both mean distributions are considered Normal. As a result, the difference in mean distributions is additionally Normal.
+
+The approximation of the degree of freedom is done by using the Welch Procedure.
+
+```{r}
+point_estimate <- xbarc - xbarh
+
+#Critical Value
+welch_top <- (((sdc^2)/nc) + ((sdh^2)/nh))^2
+welch_bottom <- ((((sdc^2)/nc)^2)/(nc-1)) + ((((sdh^2)/nh)^2)/(nh-1))
+w <- welch_top / welch_bottom
+cv <- qt(0.99, df = w)
+
+#Standard Error
+se <- sqrt(((sdc^2)/nc) + ((sdh^2)/nh))
+
+#Building the Confidence Interval
+c(point_estimate - cv*se, point_estimate + cv*se)
+```
+## Conclusion
+
+We are 98% confident that the difference in true mean age of a hospitalized COVID patient classified as critical and high severity lies within the interval (-1.737, 7.949). Since 0 is in the interval, we do not have significant evidence of a true difference in the mean age of hospitalized COVID patients classified as critical versus high severity. 
+
+The severity of COVID-19 symptoms is not proven to be significant in distinguishing specific age groups of patients. In the future, we must explore other markers of patients to understand a true indicator of distinction of age groups, such as pre-existing health conditions, region, strand contracted, or reinfection. 
+
+
+
+
+
+
+
+
+
