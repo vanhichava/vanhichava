@@ -1,0 +1,231 @@
+---
+title: "STAT 240 Final Project"
+output: html_document
+---
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+library(tidyverse)
+```
+
+# Introduction
+Getting a week off school on top of spring break sounded like you just woke up from a dream. Yet, students were overjoyed about getting a week off school as it was an event that no one would dream of happening. We thanked this new disease, COVID-19: a new disease far far away from us. That could not have been more false. As the week break turned into months and the mortality cases increased, we realized how serious COVID-19 and underprepared we were. Because of the exponentially rising mortality rate, the disease and healthcare regulations needed to be changed and enhanced to combat the spread of COVID-19. The government mandated quarantine and had to focus on rapid development in public health measures and treatments. This created a race towards vaccines from different medical companies in pursuit to combat the rising deaths, leading us to wonder if the rate of policy and medical advancement was quick enough. In conclusion, our main research question is: was there a difference in the proportion of COVID-19 deaths to total deaths between 2020 and 2021?
+
+In this report, we analyze the mortality data from the National Center for Health Statistics (CDC) to determine whether the proportion of COVID-19 deaths to total deaths changed from 2020 to 2021. We test whether the difference between these years is statistically significant using the inference between two proportions. From our analysis, the proportion of COVID-19 deaths was significantly higher in 2021 than in 2020 (98% CI with an interval of [0.0179, 0.0184]). This reflects a rise in a deadlier variant or focus in non-COVID mortality patterns during the pandemic’s second year. 
+
+
+
+# Background
+
+### Data Description
+Data Link: https://catalog.data.gov/dataset/provisional-covid-19-death-counts-by-week-ending-date-and-state 
+
+The data was collected by the National Center for Health Statistics, within the CDC. This dataset aggregates death certificate records from all 50 states and provides weekly updates on mortality trends. Taking record of the total death counts particularity revolving around disease such as COVID-19, Pneumonia, and Influenza. The data has 18,415 rows and 17 columns, but we focus on national level data during the weeks of 2020 and 2021. The columns and variables used in this report are Year, Week Ending Date, MMWR Week, COVID-19 Deaths, Total Deaths while variables used “prop, and diff. (The shortened description of the variables can be found at the bottom of this section)
+
+For the categorical variables used in our report, the Year column showcases which year each row in the dataset pertains to, from 2020-2024. In our study, we focused on the years 2020 through 2021. The Week Ending Date represents the date at the end of each week creating a weekly interval that was used as a numerical tracker in our graphs and analyses. The variable MMWR week is also used as a tracker for each week in a year. Being able to find the same correlating weeks from each year. Weeks are listed as 1 through 52. This is especially important as we need to distinguish between the proportions of each week in our scatterplot.
+
+In our quantitative variables used, COVID-19 deaths are the number of deaths in the United States caused by COVID-19 for each week. The second and final key quantitative variable is the Total Deaths which details the number of total deaths by any cause in the United States per week. All of these variables play an integral role in answering our research questions, as they provide information in both a categorical and quantitative form. 
+
+The “prop” and “diff” variables were created and used during the analyses. While “prop” is used to store the weekly proportion of COVID-19 deaths and total deaths, “diff” holds the difference in proportions between 2021 and 2020.
+
+A single row of the data set represents one full week within the years 2020-2024 about the number of deaths in the United States per week. Each row contains information about the total number of deaths that week, including the number of deaths by major diseases (pneumonia, COVID-19, influenza) individually and combined. For a final note regarding the length of the data, we will only use the rows in which the State column details “United States” rather than specific state names, as several of the rows pertain to death counts in specific states, but our research question is specific to looking at the country as a whole.
+
+
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+#This code chunk (and the code chunk below) are hidden in the final HTML submission, but this is the code that was used to clean our dataset to extract necessary information.
+covid <- read_csv("/Users/vanhichava/STAT240/finalProject/COVID.csv")
+head(covid)
+
+### Data preprocessing and cleaning
+
+covid <- covid %>%
+  # Calculate the weekly proportion of COVID-19 deaths
+  mutate(prop = `COVID-19 Deaths` / `Total Deaths`,
+         # Extract the analysis year:
+         # If the Year column contains a '/', take the part after the '/'
+         Analysis_Year = if_else(grepl("/", Year),
+                                 sub(".*?/(\\d{4})", "\\1", Year),
+                                 Year),
+         # Convert the 'Week Ending Date' column to a Date object.
+         # The expected format is mm/dd/yyyy (e.g., "01/04/2020")
+         Week_Ending_Date = as.Date(`Week Ending Date`, format = "%m/%d/%y"))
+
+head(covid)
+
+```
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+### Note we consider U.S. situation instead of individual state 
+
+covid_2020 <- covid %>% filter(Analysis_Year=="2020") %>% filter(State == "United States")
+covid_2021 <- covid %>% filter(Analysis_Year=="2021") %>% filter(State == "United States")
+```
+
+
+
+### Graph Formation
+We start by creating a scatter plot that displays two variables. The x-axis will represent weekly intervals (for example, January 1–7, 2020), while the y-axis will show the proportion of COVID-19 deaths to total deaths for that week. Each data point on the plot corresponds to the weekly proportion of COVID-19 deaths relative to all deaths. Next, we generate separate scatter plots for the years 2020 and 2021 to observe and compare the trends within each year.
+
+Finally, we merge the two plots into a single graph. In this consolidated graph, the x-axis remains the weekly date interval, and the y-axis now represents the difference between the two years—that is, the proportion of COVID-19 deaths in 2020 minus the proportion in 2021 for each week. This combined visualization will highlight the year-over-year differences, directly addressing our research question: "Is there a difference in the proportion of COVID-19 deaths to total deaths between 2020 and 2021?"
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+# Create scatter plot for 2020
+p_2020 <- ggplot(covid_2020, aes(x = Week_Ending_Date, y = prop)) +
+  geom_point() +
+  labs(title = "Weekly Proportion of COVID-19 Deaths (2020)",
+       x = "Week Ending Date",
+       y = "Proportion of COVID-19 Deaths") +
+  theme_minimal()
+
+# Create scatter plot for 2021
+p_2021 <- ggplot(covid_2021, aes(x = Week_Ending_Date, y = prop)) +
+  geom_point() +
+  labs(title = "Weekly Proportion of COVID-19 Deaths (2021)",
+       x = "Week Ending Date",
+       y = "Proportion of COVID-19 Deaths") +
+  theme_minimal()
+
+# Display the plots
+print(p_2020)
+print(p_2021)
+```
+
+```{r echo = FALSE, warning = FALSE, message = FALSE}
+# Merge the two data frames using 'MMWR Week' as the join key.
+covid_combined <- covid_2020 %>%
+  select(`MMWR Week`, Week_Ending_Date_2020 = `Week Ending Date`, prop_2020 = prop) %>%
+  inner_join(
+    covid_2021 %>% select(`MMWR Week`, Week_Ending_Date_2021 = `Week Ending Date`, prop_2021 = prop),
+    by = "MMWR Week"
+  ) %>%
+  mutate(diff = prop_2021 - prop_2020)
+
+# Now create a scatter plot of the difference.
+p_diff <- ggplot(covid_combined, aes(x = `MMWR Week`, y = diff)) +
+  geom_point() +
+  labs(title = "Difference in Weekly Proportion of COVID-19 Deaths (2020 - 2021)",
+       x = "MMWR Week",
+       y = "Difference (Calculate by 2021 - 2020)") +
+  theme_minimal()
+
+print(p_diff)
+```
+
+
+
+
+
+### Graphical Analysis
+We created two sets of scatter plots:
+
+Yearly Scatter Plots for 2020 and 2021:
+The x-axis represents the week (using the Week Ending Date). The y-axis represents the proportion of COVID‑19 deaths relative to total deaths for that week. These plots allow us to examine the trend and variability of COVID‑19 mortality on a weekly basis for each year.
+
+Combined Scatter Plot of Year-over-Year Difference:
+We then merge the two datasets (using MMWR Week as the common key) to focus on weeks that overlap between 2020 and 2021. The resulting graph shows the difference between the two years (calculated as the 2020 proportion minus the 2021 proportion for each week).
+
+This combined visualization directly addresses our main research question: "Is there a difference in the proportion of COVID‑19 deaths to total deaths between 2020 and 2021?" By visually comparing these differences, we can explore whether one year experienced relatively higher COVID‑19 mortality and identify any consistent patterns throughout the weeks.
+
+
+
+# Statistical Analysis
+```{r echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+df <- read_csv("/Users/vanhichava/STAT240/finalProject/COVID.csv")
+deaths = df %>% 
+  select(`Year`,`COVID-19 Deaths`,`Total Deaths`) %>% 
+  drop_na() %>% 
+  group_by(Year) %>% 
+  summarise(covid_deaths=sum(`COVID-19 Deaths`),total_deaths=sum(`Total Deaths`)) %>% 
+  mutate(prop= covid_deaths/total_deaths)
+p20 = deaths[deaths$Year == 2020, "prop"] %>% as.numeric()
+p21 = deaths[deaths$Year == 2021, "prop"] %>% as.numeric()
+n20 = deaths[deaths$Year == 2020, "total_deaths"] %>% as.numeric()
+n21 = deaths[deaths$Year == 2021, "total_deaths"] %>% as.numeric()
+x20 = deaths[deaths$Year == 2020, "covid_deaths"] %>% as.numeric()
+x21 = deaths[deaths$Year == 2021, "covid_deaths"] %>% as.numeric()
+deaths
+```
+
+### Preliminaries:
+Our parameters of interest are $p_{20}$ and $p_{21}$ which represent the proportion of deaths labeled as COVID-19 deaths in the year 2020 and 2021 respectively. The inference method that will be used is inference on the difference between two population proportions.
+
+
+### Check Assumptions:
+Independence: Since each death is independent and both sample sets were collected in two separate years we can ensure that the sample sets are also independent.
+
+Sample Size: Below we perform a check to ensure that our sample size is large enough such that the central limit theorem can be applied and our difference in proportions can be approximated using a normal distribution.
+We define our sample sizes as: $n_{20}$ (the sample size for deaths in 2020) and $n_{21}$ (the sample size for deaths in 2021).
+
+$n_{20}$*$p_{20}$ >= 10
+
+$n_{21}$*$p_{21}$ >= 10
+
+$n_{20}$*(1-$p_{20}$) >= 10
+
+$n_{21}$*(1-$p_{21}$) >= 10
+
+```{r echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+n20*p20 >= 10
+n21*p21 >= 10
+n20*(1-p20) >= 10
+n21*(1-p21) >= 10
+```
+Since all values are greater than 10, the use of a normal distribution is appropriate.
+
+
+### Obtain CI (98%):
+Point Estimate for $p_{21}-p_{20}$ = 0.01815299
+```{r echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+p21 = x21/n21
+p20 = x20/n20
+point_est = p21-p20
+point_est
+```
+Margin of Error = 0.0002403869
+```{r echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+se = ((p21*(1-p21)/n21)+(p20*(1-p20)/n20)) %>% sqrt()
+z = qnorm(0.99)
+z*se
+```
+This gives us a 98% confidence interval of: (0.01791260, 0.01839337)
+```{r echo = FALSE, warning = FALSE, message = FALSE, results='hide'}
+lower = point_est - z*se
+upper = point_est + z*se
+c(lower,upper)
+```
+
+# Discussion 
+
+### Statistical Interpretation of Our CI
+As exemplified in our confidence interval above, we are 98% confident that the true difference in proportion of COVID-19 deaths to total deaths in 2021 versus 2020 ($p_{21}$ - $p_{20}$) lies in the interval (0.01791260, 0.01839337). Due to the exclusion of 0 in our interval, there is a statistically significant difference between the proportion of COVID-19 deaths to total deaths in 2020 versus 2021. Additionally, our interval is completely positive, which also indicates (based on the order that we ran the test in) that the proportion of COVID-19 deaths to total deaths in 2021 is larger than the proportion of COVID-19 deaths to total deaths in 2020.
+
+### Non-Statistical Interpretation of Our CI
+In simpler terms, our final results suggest that there is a difference between the proportion of COVID-19 deaths to total deaths in 2020 and 2021. The evidence we collected from analyzing our data was strong and supports this final conclusion. Also, since our results were positive, we can say that the proportion for 2021 was higher than the proportion of 2020. On average, based on our findings, the COVID-19 proportion of deaths to total deaths for 2021 was about 1.8% higher than that of 2020.
+
+### Shortcomings
+A shortcoming of our analysis is the underreporting/misrepresentation of data from the 2020 pandemic. The COVID-19 pandemic in 2020 was extremely stressful and relatively new for several months of the year; as a result, diagnostic testing and screening for COVID-19 was very simplistic and public health protocols were still being created for this new circumstance. The stress of this situation likely contributed to many misrepresented COVID-19 deaths as pneumonia or other serious health conditions. However, in 2021, the public health protocols were updated and screening for COVID-19 became more rigorous and streamlined. The main idea of this shortcoming is that there were likely thousands of deaths that went unnoticed, and although we used a government dataset, the circumstances in 2020 created a larger misrepresentation of COVID-19 deaths.
+
+### Future Research Recommendations
+As we combed further through the dataset, we came up with various questions that would work well with future research. For example, instead of looking at the United States as a whole, it would be interesting to compare the proportion of COVID-19 deaths to total deaths between different states in one specific year. This would allow us to see the changes in regional policies of healthcare and understand how much COVID-19 impacts different states. Another question includes the impact of vaccinations, as we know in society that the vaccine had an immense impact on lowering the effects of COVID-19. We could statistically analyze the proportion of COVID-19 deaths to total deaths before and after the vaccine, to get a numerical output of the true impact. 
+ 
+
+
+# Citation
+
+National Center for Health Statistics. (2020). *Provisional COVID-19 death counts by week ending date and state* [Data set]. U.S. Department of Health and Human Services. https://catalog.data.gov/dataset/provisional-covid-19-death-counts-by-week-ending-date-and-state
+
+
+
+
+
+
+
+
+
+
+
+
