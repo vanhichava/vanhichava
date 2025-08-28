@@ -1,1 +1,1 @@
-
+## This is a folder containing my work with statistical tests in R. I experimented with several different hypothesis and preforming statistical analysis on the data, including linear regression and proportions tests. I additional showcased my data manipulation and plotting in order to better visualize the data before performing the tests. Thank you!
