@@ -1,0 +1,311 @@
+---
+title: "March Madness Model 2026"
+author: "Vanhi Chava"
+date: "2026-03-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+
+```{r, output = FALSE}
+library(dplyr)
+library(tidyverse)
+```
+
+
+```{r}
+ratings_538 <- read.csv("datasets/538_right_ratings.csv")
+ap_poll <- read.csv("datasets/AP_Poll.csv")
+bart_neut <- read.csv("datasets/BartNeutral.csv")
+ken_pom_bart <- read.csv("datasets/KPBart.csv")
+tourney_past_games <- read.csv("datasets/Tournament Matchups.csv")
+team_rankings <- read.csv("datasets/teamranks.csv")
+```
+
+
+# Potential Features to Use
+
+**Data Link:**
+
+All datasets taken from: https://www.kaggle.com/datasets/nishaanamin/march-madness-data/data
+
+**538 Ratings:**
+
+* only goes to 2023
+
+potential features: POWER.RATING (double, 0 to 100)
+
+**AP Poll:**
+
+* potential features: AP.RANK (1 to 47)
+
+**Barttorvik Neutral:**
+
+* EFG., EFG.D
+
+* TOV. , TOV.D
+
+* ELITE.SOS
+
+* TALENT
+
+* WIN. (Win Percentage)
+
+* BARTHAG (team strength rating, adjusted offensive and defensive efficiency), (close to 1 elite team, 0.5 average, 0.4 and below is weak)
+
+* BADJ.O (team offensive impact per 100 possession, based on box score, + helps offense and - hurts offense)
+
+* BADJ.D (team defensive impact per 100 possession points prevent, negative is good)
+
+* ORB., DRB.
+
+* EXP (experience of players)
+
+
+**KenPom Barttorvik:** (in addition to neutral)
+
+* KADJ.EM --> adjusted efficiency margin, represents number of points team would outscore an avg. opponent by over 100 possessions (almost always best single-variable predictor)
+
+* KADJ.O & KADJ.D --> KenPom's version of adjusted offensive and defensive efficiency
+
+* KADJ.T (adjusted tempo) --> possessions per 40 minutes, adjusted for opponents (look for tempo mismatches, faster teams will win)
+
+* X3PT. --> 3 point percentage
+
+* X2PT. --> 2 point percentage
+
+
+
+**Tournament Matchups:**
+
+Holds all previous tournament matchups and who won.
+
+**Team Rankings:**
+
+* SOS.RATING
+
+* V.1.25.WINS & V.1.25.LOSS --> perfromance against the elite teams
+
+* V.26.50 WINS 
+
+* CONSISTENCY.RANK --> team's performance from game to game ranked
+
+* LUCK.RATING --> deviation between team's actual win-loss record and expected record based on efficiency (high-luck teams will not have as much luck in the tournament)
+
+
+
+# Data Cleaning + Preparation
+
+Picking the main predictors + creating a master dataset:
+
+```{r}
+# pick the predictors from each dataset, also keep YEAR and TEAM
+ratings_538_small <- ratings_538 %>%
+  select(YEAR, TEAM, POWER.RATING)
+
+ap_small <- ap_poll %>%
+  select(YEAR, TEAM, AP.RANK)
+
+bart_small <- bart_neut %>%
+  select(YEAR, TEAM, EFG., EFG.D, TOV., TOV.D, ELITE.SOS, TALENT, WIN., BARTHAG, BADJ.O, BADJ.D, OREB., DREB., EXP)
+
+ken_pom_small <- ken_pom_bart %>%
+  select(YEAR, CONF, TEAM, KADJ.EM, KADJ.O, KADJ.D, KADJ.T, X2PT., X3PT.)
+
+team_rankings_small <- team_rankings %>%
+  select(YEAR, TEAM, SOS.RATING, V.1.25.WINS, V.1.25.LOSS, CONSISTENCY.RANK, LUCK.RATING)
+
+# join by YEAR and TEAM
+master_df <- ken_pom_small %>%
+  left_join(bart_small, by = c("YEAR", "TEAM")) %>%
+  left_join(team_rankings_small, by = c("YEAR", "TEAM")) %>%
+  left_join(ratings_538_small, by = c("YEAR", "TEAM")) %>%
+  left_join(ap_small, by = c("YEAR", "TEAM")) 
+
+# team name changes
+master_df <- master_df %>%
+  mutate(TEAM = case_when(
+    TEAM == "Iowa St."             ~ "Iowa St",
+    TEAM == "McNeese St."          ~ "McNeese St",
+    TEAM == "Michigan St."         ~ "Michigan St",
+    TEAM == "North Carolina St."   ~ "NC State",
+    TEAM == "Ohio St."             ~ "Ohio St",
+    TEAM == "St. John's"           ~ "St John's",
+    TEAM == "Saint Louis"           ~ "St Louis",
+    TEAM == "Saint Mary's"         ~ "St Mary's CA",
+    TEAM == "Utah St."             ~ "Utah St",
+    TEAM == "Kennesaw St."         ~ "Kennesaw",
+    TEAM == "North Dakota St."     ~ "N Dakota St",
+    TEAM == "Tennessee St."        ~ "Tennessee St",
+    TEAM == "Wright St."           ~ "Wright St",
+    TEAM == "Queens"               ~ "Queens NC", 
+    TEAM == "Prairie View A&M"     ~ "Prairie View",
+    TRUE ~ TEAM
+  ))
+
+master_df <- master_df %>%
+  distinct(YEAR, TEAM, .keep_all = TRUE)
+```
+
+Prepping the Tournament Matchups dataset so each game is one row + Cleaning:
+
+```{r}
+tourney_results <- tourney_past_games %>%
+  filter(!is.na(SCORE) & SCORE > 0) %>%
+  group_by(YEAR, CURRENT.ROUND, id = ceiling(row_number() / 2)) %>%
+  summarize(
+    WINNER = TEAM[which.max(SCORE)],
+    LOSER = TEAM[which.min(SCORE)],
+    SEED.W = SEED[which.max(SCORE)],
+    SEED.L = SEED[which.min(SCORE)],
+    SCORE.W = max(SCORE),
+    SCORE.L = min(SCORE),
+    ROUND = first(ROUND),
+    .groups = "drop") %>%
+  mutate(SCORE.DIFF = SCORE.W - SCORE.L) %>%
+  select(YEAR, WINNER, LOSER, SEED.W, SEED.L, ROUND, CURRENT.ROUND, SCORE.W, SCORE.L, SCORE.DIFF) %>%
+  arrange(desc(YEAR))
+```
+
+
+# Training Dataset
+
+```{r}
+# non-breaking spaces with regular spaces replacement
+master_df$TEAM <- gsub("\u00A0", " ", master_df$TEAM)
+tourney_results$WINNER <- gsub("\u00A0", " ", tourney_results$WINNER)
+tourney_results$LOSER <- gsub("\u00A0", " ", tourney_results$LOSER)
+
+# joining stats for both teams by joining "tourney_results" and "master_df"
+winner_stats <- master_df %>%
+  rename_all(~paste0(., ".W")) 
+loser_stats <- master_df %>%
+  rename_all(~paste0(., ".L")) 
+
+training_data <- tourney_results %>% 
+  left_join(winner_stats, by = c("YEAR" = "YEAR.W", "WINNER" = "TEAM.W")) %>%
+  left_join(loser_stats, by = c("YEAR" = "YEAR.L", "LOSER" = "TEAM.L"))
+
+# adding difference feature
+training_data <- training_data %>%
+  mutate(across(c(KADJ.EM.W, KADJ.EM.L, BARTHAG.W, BARTHAG.L, SEED.W, SEED.L), as.numeric)) %>%
+  mutate(KADJ.EM_DIFF = KADJ.EM.W - KADJ.EM.L,
+   BARTHAG_DIFF = BARTHAG.W - BARTHAG.L,
+   SEED_DIFF = SEED.W - SEED.L,
+   Result = 1)
+
+final_training_data <- training_data %>%
+  filter(!is.na(KADJ.EM_DIFF))
+```
+
+
+
+# Model Fitting
+
+```{r}
+# creating a model ready data.frame
+wins <- final_training_data %>%
+  mutate(Result = 1)
+
+losses <- final_training_data %>%
+  mutate(
+    KADJ.EM_DIFF = -KADJ.EM_DIFF,
+    LUCK.RATING.W_wait = LUCK.RATING.W,
+    LUCK.RATING.W = LUCK.RATING.L,
+    LUCK.RATING.L = LUCK.RATING.W_wait,
+    CONSISTENCY.RANK.W_wait = CONSISTENCY.RANK.W,
+    CONSISTENCY.RANK.W = CONSISTENCY.RANK.L,
+    CONSISTENCY.RANK.L = CONSISTENCY.RANK.W_wait,
+    Result = 0) %>%
+  select(-LUCK.RATING.W_wait, -CONSISTENCY.RANK.W_wait)
+
+model_df <- bind_rows(wins, losses)
+
+model_df <- model_df %>%
+    mutate(LUCK_DIFF = LUCK.RATING.W - LUCK.RATING.L,
+         CONSISTENCY_DIFF = CONSISTENCY.RANK.W - CONSISTENCY.RANK.L)
+```
+
+Model:
+
+```{r}
+# split into training and test data
+ready_training_data <- model_df %>%
+  filter(YEAR < 2024)
+
+testing_data <- model_df %>%
+  filter(YEAR >= 2024)
+
+mm_model_1 <- glm(Result ~ KADJ.EM_DIFF + LUCK_DIFF + CONSISTENCY_DIFF, 
+                  data = ready_training_data,
+                  family = "binomial")
+summary(mm_model_1)
+```
+
+## Checking Brier Score + Most Games Correct
+
+```{r}
+# test set probabilities
+testing_data$probability <- predict(mm_model_1, testing_data, type = "response")
+
+# brier score calculation
+brier_score <- mean((testing_data$probability - testing_data$Result)^2)
+brier_score
+
+# most games correct
+testing_data <- testing_data %>%
+  mutate(prediction = ifelse(probability > 0.5, 1, 0),
+         correct_games = ifelse(prediction == Result, 1, 0))
+mean(testing_data$correct_games)
+```
+
+
+
+# Submission Formatting
+
+```{r}
+potential_matchups <- read.csv("2026_Potential_Matchups.csv")
+
+stats_2026 <- master_df %>% filter(YEAR == 2026)
+
+# join stats for higher seed
+submission_df <- potential_matchups %>%
+  left_join(stats_2026, by = c("HigherSeed" = "TEAM")) %>%
+  rename(
+    KADJ.EM.W = KADJ.EM,
+    LUCK.RATING.W = LUCK.RATING,
+    CONSISTENCY.RANK.W = CONSISTENCY.RANK
+  )
+
+# join stats for lower seed
+submission_df <- submission_df %>%
+  left_join(stats_2026, by = c("LowerSeed" = "TEAM")) %>%
+  rename(
+    KADJ.EM.L = KADJ.EM,
+    LUCK.RATING.L = LUCK.RATING,
+    CONSISTENCY.RANK.L = CONSISTENCY.RANK
+  )
+
+# features I need
+submission_df <- submission_df %>%
+  mutate(KADJ.EM_DIFF = KADJ.EM.W - KADJ.EM.L,
+         LUCK_DIFF = LUCK.RATING.W - LUCK.RATING.L,
+         CONSISTENCY_DIFF = CONSISTENCY.RANK.W - CONSISTENCY.RANK.L)
+
+close_submission_data <- submission_df %>%
+  select(HigherSeed, HigherSeedID, HigherSeedNum, LowerSeed, LowerSeedID, LowerSeedNum, Predictions, KADJ.EM_DIFF, LUCK_DIFF, CONSISTENCY_DIFF)
+
+close_submission_data$Predictions <- predict(mm_model_1, close_submission_data, type = "response")
+
+final_submission_data <- close_submission_data %>%
+  select(HigherSeed, HigherSeedID, HigherSeedNum, LowerSeed, LowerSeedID, LowerSeedNum, Predictions)
+  
+write.csv(final_submission_data, "Vanhi_Chava_SAC_Submission.csv", row.names = FALSE)
+```
+
+
+
