@@ -1,7 +1,1 @@
-## Name: Vanhi Chava
-
-Data Source: https://www.kaggle.com/datasets/nishaanamin/march-madness-data/data
-
-Datasets Used: 538 Rankings, AP Poll, Barttovik, Ken Pom
-
-I only used AI in the end for debugging to make sure there was no small errors in my coding logic.
+This is my sports analytics folder, where I have showcased my projects involving March Madness, NBA, and Formula 1. These projects contain a wide range of computational methods, such as regression, CART, SHAP, CP profiles and more. I also have visualization projects includes, specifically in Formula 1. The projects have been completed in both R and Python.
