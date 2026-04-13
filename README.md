@@ -1,7 +1,19 @@
-## Hello! My name is Vanhi Chava and I am a data science and statistics student at the University of Wisconsin-Madison. This repository is a collection of my work in data analysis and statistical modeling in R. 
+## Hello! My name is Vanhi Chava and I am a data science and statistics student at the University of Wisconsin-Madison. This repository is a collection of my work in statistical modeling, predictive analytics, and data visualization using R and Python. 
 
-I included my work in sports analytics, with predictive modeling and intrinsic interpretability methods such as CART. My goal is to continue my passion with computational analysis in sports to create more informed data-driven decisions. In addition to modeling, I also created various visualizations to make the data recieved easy to interpret. 
+Sports Analytics:
 
-I also worked through preforming statistical tests, manipulating data, and creating graphical models in biostatistics with a goal of making an impact in true research. The work I have displayed in this repository contains some data from clinical settings where I try to emulate the conditions of a clinical trial to showcase my work in R.
+My main focus is leveraging computational analysis to drive informed data-driven decisions in sports. My works includes predictive modeling (such as my March Madness model) and intrinsic intepretability methods like CART. I am articularly intrested in how telemetry and advanced metrics can be translated into strategic decision-making.
+
+Statistical Research & Biostatistics:
+
+Beyond sports, I have experience performing statistical inference tests and manipulating complex datasets in clinical settings. My goal is to apply data-driven research to emulate the conditions of a clinical trial to showcase my work and contribute to meaningful scientific discovery.
+
+Technical Focuses:
+
+Modeling: Multiple Logitisic Regression, CART, SHAP (shapviz), Ceteris Paribus Profiles, Random Forests (xgBoost), Predictive Analytics
+
+Tools: R, Python, Data Visualization (ggplot2, matplotlib), Data Maniupulation (tidyverse, pandas)
 
 ## Thank you for taking the time to look through my portfolio.
+
+
